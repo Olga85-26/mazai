@@ -7,9 +7,11 @@
   <style>
     :root {
       --coffee: #D2B48C;
+      --btn: #5b2a83;       /* темно-фиолетовый для кнопок */
+      --btn-hover: #6a3d9f;  /* светлее для hover */
     }
 
-    /* Фиолетовый фон без градиента, звезд на фоне не требуется */
+    /* Фиолетовый фон без градиента, с мотивирующими фразами на фоне */
     html, body { height: 100%; }
     body {
       margin: 0;
@@ -23,7 +25,7 @@
       overflow: hidden;
     }
 
-    /* Невидимый слой для мотивирующих фраз */
+    /* Невидимый слой для мотивирующих фраз (фон) */
     .bg-phrases {
       position: fixed;
       top: 0;
@@ -33,7 +35,6 @@
       overflow: hidden;
       z-index: 0;
       pointer-events: none;
-      /* можно добавить лёгкую дымку, если нужно, но оставим без градиента */
     }
 
     .bg-phrases .phrase {
@@ -95,10 +96,10 @@
       border-radius: 8px;
       border: none;
       cursor: pointer;
-      background: #4f2f23;
+      background: var(--btn);
       color: #fff;
     }
-    .quick-select button:hover { background: #5d3a28; }
+    .quick-select button:hover { background: var(--btn-hover); }
 
     .controls {
       display: inline-flex;
@@ -136,7 +137,7 @@
       border-radius: 8px;
       border: none;
       cursor: pointer;
-      background: #5a4630;
+      background: var(--btn);
       color: #fff;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
     }
@@ -261,7 +262,7 @@
       "Соберись и двигайся вперед!", "Успех рядом, держись!", "Верь в себя!",
       "Ты заслуживаешь лучшего!", "Сохраняй позитив и продолжай!", "Судьба любит смелых!",
       "Возможности шире, чем ты думаешь!", "Продолжаай идти к мечте!",
-      "Ты способна на большее!", "Каждый день — новый шанс!", "Ты уникален(а)!"
+      "Ты способен на большее!", "Каждый день — новый шанс!", "Ты уникален(а)!"
     ];
 
     function pad(n){ return String(n).padStart(2, '0'); }
@@ -421,7 +422,7 @@
     function triggerBeep(){
       ensureAudioRem();
       const t0 = audioCtx.currentTime;
-      // короткая последовательность
+      // короткая последовательность нот
       playTone(392.00, 0.12, t0);
       playTone(493.88, 0.12, t0 + 0.15);
       playTone(587.33, 0.18, t0 + 0.30);
@@ -486,15 +487,13 @@
     // Генерация фоновых фраз
     function generateBackgroundPhrases() {
       const container = document.querySelector('.bg-phrases');
-      // Очистим на случай повторного вызова
       container.innerHTML = '';
-      const count = 80; // количество фраз на фоне
+      const count = 80;
       for (let i = 0; i < count; i++) {
         const span = document.createElement('span');
         span.className = 'phrase';
         const text = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
         span.textContent = text;
-        // Случайное положение, размер и прозрачность
         span.style.left = Math.random() * 100 + '%';
         span.style.top = Math.random() * 100 + '%';
         const size = 14 + Math.random() * 28;
@@ -505,7 +504,6 @@
       }
     }
 
-    // Запускаем генерацию фраз после загрузки
     window.addEventListener('load', generateBackgroundPhrases);
   </script>
 </body>
