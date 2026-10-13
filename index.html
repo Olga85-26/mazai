@@ -2,23 +2,28 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>ЛЮБИМАЯ ГРАФАНА МАЗАЕВОЙ ОЛЕЧКИ</title>
+  <title>ГРАФАНА любимка</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root {
-      --coffee: #D2B48C;
-    }
-
-    /* без градиента, фон однотонный темно-розовый */
+    /* без градиента, фон черное небо со звездами */
     html, body { height: 100%; }
     body {
       margin: 0;
-      background-color: #7a1f49;
+      background: #000;
       color: #fff;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(255,255,255,.9) 0.8px, transparent 0.8px),
+        radial-gradient(circle at 40% 50%, rgba(255,255,255,.8) 0.8px, transparent 0.8px),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,.7) 0.8px, transparent 0.8px),
+        radial-gradient(circle at 60% 70%, rgba(255,255,255,.6) 0.6px, transparent 0.6px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
     }
 
     .wrap {
@@ -27,7 +32,7 @@
       border-radius: 16px;
       max-width: 980px;
       width: 92%;
-      background: rgba(0,0,0,0.25);
+      background: rgba(0,0,0,0.55);
       border: 1px solid rgba(255,255,255,0.15);
     }
 
@@ -41,12 +46,12 @@
       margin: 0 0 14px;
     }
 
-    /* Таймер крупно с эффектом кофейного цвета */
+    /* Таймер крупно с белыми цифрами */
     #display {
       font-family: "Courier New", monospace;
       font-weight: 900;
       font-size: clamp(72px, 14vw, 170px);
-      color: var(--coffee);
+      color: #fff; /* белые цифры */
       letter-spacing: 8px;
       margin: 6px 0 14px;
       text-shadow: 0 6px 0 rgba(0,0,0,0.25);
@@ -165,7 +170,7 @@
 </head>
 <body>
   <div class="wrap" aria-label="Таймер-Хэллоуин">
-    <div class="title">ЛЮБИМАЯ ГРАФАНА МАЗАЕВОЙ ОЛЕЧКИ</div>
+    <div class="title">ГРАФАНА любимка</div>
 
     <div id="display" aria-live="polite">00:00</div>
 
