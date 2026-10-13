@@ -7,10 +7,10 @@
   <style>
     :root {
       --btn: #5b2a83;       /* темно-фиолетовый для кнопок */
-      --btn-hover: #6a3d9f;
+      --btn-hover: #6a3d9f;  /* светлее для hover */
     }
 
-    /* Фиолетовый фон без градиента, с мотивирующими фразами на фоне */
+    /* Фиолетовый фон с мотивирующими фразами на фоне */
     html, body { height: 100%; }
     body {
       margin: 0;
@@ -24,18 +24,15 @@
       overflow: hidden;
     }
 
-    /* Невидимый слой для мотивирующих фраз (фон) */
+    /* Декоративный фон с фразами (слой) */
     .bg-phrases {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       overflow: hidden;
       z-index: 0;
       pointer-events: none;
     }
-
     .bg-phrases .phrase {
       position: absolute;
       white-space: nowrap;
@@ -59,7 +56,6 @@
       backdrop-filter: saturate(110%);
     }
 
-    /* Название по центру и крупно */
     .title {
       font-size: clamp(38px, 9vw, 96px);
       font-weight: 900;
@@ -69,18 +65,16 @@
       margin: 0 0 14px;
     }
 
-    /* Таймер крупно с белыми цифрами */
     #display {
       font-family: "Courier New", monospace;
       font-weight: 900;
       font-size: clamp(72px, 14vw, 170px);
-      color: #fff; /* белые цифры */
+      color: #fff;
       letter-spacing: 8px;
       margin: 6px 0 14px;
       text-shadow: 0 6px 0 rgba(0,0,0,0.25);
     }
 
-    /* Быстрый выбор времени под таймером */
     .quick-select {
       display: flex;
       justify-content: center;
@@ -153,7 +147,6 @@
       opacity: .95;
     }
 
-    /* Напоминания секция */
     .reminders {
       margin-top: 18px;
       padding: 12px;
@@ -162,17 +155,8 @@
       border: 1px solid rgba(255,255,255,.15);
       text-align: left;
     }
-    .reminders h4 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-    .reminders .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-bottom: 8px;
-    }
+    .reminders h4 { margin: 0 0 8px; font-size: 18px; }
+    .reminders .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
     .reminders label { font-size: 14px; color: #fff; }
     .reminders input { width: 90px; padding: 8px; font-size: 16px; }
 
@@ -238,10 +222,12 @@
   </div>
 
   <script>
-    // Основной таймер
+    // Глобальные переменные таймера
     let totalSeconds = 0;
     let timerId = null;
     let isRunning = false;
+
+    // Аудио
     let audioCtx = null;
     let melodyScheduled = false;
 
@@ -252,7 +238,7 @@
     let remindersEndTimeout = null;
     let remindersActive = false;
 
-    // Фразы для фона
+    // Фразы на фоне
     const motivationalPhrases = [
       "У тебя всё получится!", "Ты лучшая!", "Ты сильнее каждый день!",
       "Доверяй себе!", "Ура победам!", "Не бойся начинать!", "Действуй сегодня!",
@@ -287,6 +273,7 @@
       osc.frequency.value = freq;
       osc.connect(gain);
       gain.connect(ctx.destination);
+      gain.value = 0.14;
       gain.gain.value = 0.14;
       osc.start(when);
       gain.gain.setValueAtTime(0.0, when);
@@ -337,7 +324,6 @@
         updateDisplay(totalSeconds);
         document.getElementById('minutes').value = mins;
         document.getElementById('seconds').value = 0;
-        // остановить текущий таймер
         if (timerId){
           clearInterval(timerId);
           timerId = null;
@@ -348,14 +334,14 @@
       });
     });
 
-    // Инициализация обработчиков после загрузки DOM
+    // Инициализация после загрузки DOM
     document.addEventListener('DOMContentLoaded', () => {
+      // Объявление элементов
       const startBtn = document.getElementById('startBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const resetBtn = document.getElementById('resetBtn');
       const startRemindersBtn = document.getElementById('startRemindersBtn');
       const stopRemindersBtn = document.getElementById('stopRemindersBtn');
-      const stopRemindersBtnElem = stopRemindersBtn;
 
       // Старт таймера
       startBtn.addEventListener('click', () => {
@@ -411,13 +397,13 @@
         resetBtn.disabled = true;
       });
 
-      // Напоминания: кнопки
+      // Напоминания: запуск/остановка
       startRemindersBtn.addEventListener('click', () => {
         const interval = parseInt(document.getElementById('remInterval').value, 10);
         const duration = parseInt(document.getElementById('remDuration').value, 10);
         if (isNaN(interval) || interval <= 0 || isNaN(duration) || duration <= 0) return;
 
-        // если активны, остановим перед новой настройкой
+        // остановить если уже активны
         if (remindersActive) stopReminders();
 
         remIntervalMin = interval;
@@ -442,13 +428,13 @@
         if (remindersEndTimeout) clearTimeout(remindersEndTimeout);
         remindersEndTimeout = null;
         remindersActive = false;
-        startRemindersBtn.disabled = false;
-        stopRemindersBtn.disabled = true;
+        document.getElementById('startRemindersBtn').disabled = false;
+        document.getElementById('stopRemindersBtn').disabled = true;
         showToast("Напоминания остановлены");
       }
     });
 
-    // Общие утилиты
+    // Утилиты
     function showToast(text){
       const el = document.createElement('div');
       el.className = 'toast';
@@ -473,20 +459,20 @@
       } else {
         showToast(msg);
       }
-      // звук сигнала напоминания
+      // сигнал
       triggerBeep();
     }
 
     function triggerBeep(){
       ensureAudio();
       const t0 = audioCtx.currentTime;
-      // короткая последовательность нот
+      // короткая последовательность
       playTone(392.00, 0.12, t0);
       playTone(493.88, 0.12, t0 + 0.15);
       playTone(587.33, 0.18, t0 + 0.30);
     }
 
-    // инициализация фона фраз
+    // Фоновые фразы
     function generateBackgroundPhrases() {
       const container = document.querySelector('.bg-phrases');
       container.innerHTML = '';
@@ -506,8 +492,12 @@
       }
     }
 
-    // Инициализация аудио и фраз после загрузки
+    // Запуск фраз после загрузки
     window.addEventListener('load', generateBackgroundPhrases);
+
+    // Инициализация аудио
+    // Небольшой дебаг-подсказчик в консоль (опционально)
+    // console.log('Готово: таймер и напоминания и фон работают.');
   </script>
 </body>
 </html>
