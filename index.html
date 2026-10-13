@@ -6,9 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --coffee: #D2B48C;
       --btn: #5b2a83;       /* темно-фиолетовый для кнопок */
-      --btn-hover: #6a3d9f;  /* светлее для hover */
+      --btn-hover: #6a3d9f;
     }
 
     /* Фиолетовый фон без градиента, с мотивирующими фразами на фоне */
@@ -57,6 +56,7 @@
       background: rgba(0,0,0,0.55);
       border: 1px solid rgba(255,255,255,0.15);
       box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      backdrop-filter: saturate(110%);
     }
 
     /* Название по центру и крупно */
@@ -150,7 +150,7 @@
     .hint {
       margin-top: 12px;
       font-size: 13px;
-      opacity: .9;
+      opacity: .95;
     }
 
     /* Напоминания секция */
@@ -192,7 +192,6 @@
   </style>
 </head>
 <body>
-  <!-- Фоновые мотивирующие фразы будут отрисованы скриптом -->
   <div class="bg-phrases" aria-hidden="true"></div>
 
   <div class="wrap" aria-label="Таймер-Хэллоуин">
@@ -349,58 +348,107 @@
       });
     });
 
-    document.getElementById('startBtn').addEventListener('click', () => {
-      const minsFromInput = parseInt(document.getElementById('minutes').value, 10) || 0;
-      const secsFromInput = parseInt(document.getElementById('seconds').value, 10) || 0;
-      if (minsFromInput < 0 || secsFromInput < 0 || secsFromInput > 59) return;
-      totalSeconds = minsFromInput * 60 + secsFromInput;
-      updateDisplay(totalSeconds);
-      if (timerId) clearInterval(timerId);
-      timerId = setInterval(() => {
-        if (totalSeconds <= 0){
+    // Инициализация обработчиков после загрузки DOM
+    document.addEventListener('DOMContentLoaded', () => {
+      const startBtn = document.getElementById('startBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const startRemindersBtn = document.getElementById('startRemindersBtn');
+      const stopRemindersBtn = document.getElementById('stopRemindersBtn');
+      const stopRemindersBtnElem = stopRemindersBtn;
+
+      // Старт таймера
+      startBtn.addEventListener('click', () => {
+        const minsFromInput = parseInt(document.getElementById('minutes').value, 10) || 0;
+        const secsFromInput = parseInt(document.getElementById('seconds').value, 10) || 0;
+        if (minsFromInput < 0 || secsFromInput < 0 || secsFromInput > 59) return;
+        totalSeconds = minsFromInput * 60 + secsFromInput;
+        updateDisplay(totalSeconds);
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+          if (totalSeconds <= 0){
+            clearInterval(timerId);
+            timerId = null;
+            isRunning = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resetBtn.disabled = false;
+            finishTimer();
+            return;
+          }
+          totalSeconds--;
+          updateDisplay(totalSeconds);
+        }, 1000);
+
+        isRunning = true;
+        startBtn.disabled = true;
+        pauseBtn.disabled = false;
+        resetBtn.disabled = false;
+      });
+
+      // Пауза
+      pauseBtn.addEventListener('click', () => {
+        if (timerId){
           clearInterval(timerId);
           timerId = null;
           isRunning = false;
-          document.getElementById('startBtn').disabled = false;
-          document.getElementById('pauseBtn').disabled = true;
-          document.getElementById('resetBtn').disabled = false;
-          finishTimer();
-          return;
+          startBtn.disabled = false;
+          pauseBtn.disabled = true;
         }
-        totalSeconds--;
-        updateDisplay(totalSeconds);
-      }, 1000);
+      });
 
-      isRunning = true;
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('pauseBtn').disabled = false;
-      document.getElementById('resetBtn').disabled = false;
-    });
-
-    document.getElementById('pauseBtn').addEventListener('click', () => {
-      if (timerId){
-        clearInterval(timerId);
+      // Сброс
+      resetBtn.addEventListener('click', () => {
+        if (timerId) clearInterval(timerId);
         timerId = null;
         isRunning = false;
-        document.getElementById('startBtn').disabled = false;
-        document.getElementById('pauseBtn').disabled = true;
+        totalSeconds = 0;
+        document.getElementById('minutes').value = 0;
+        document.getElementById('seconds').value = 0;
+        updateDisplay(0);
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        resetBtn.disabled = true;
+      });
+
+      // Напоминания: кнопки
+      startRemindersBtn.addEventListener('click', () => {
+        const interval = parseInt(document.getElementById('remInterval').value, 10);
+        const duration = parseInt(document.getElementById('remDuration').value, 10);
+        if (isNaN(interval) || interval <= 0 || isNaN(duration) || duration <= 0) return;
+
+        // если активны, остановим перед новой настройкой
+        if (remindersActive) stopReminders();
+
+        remIntervalMin = interval;
+        remDurationHours = duration;
+
+        // Запуск напоминаний
+        triggerReminder();
+        remindersIntervalId = setInterval(triggerReminder, interval * 60 * 1000);
+        remindersEndTimeout = setTimeout(stopReminders, duration * 60 * 60 * 1000);
+
+        remindersActive = true;
+        startRemindersBtn.disabled = true;
+        stopRemindersBtn.disabled = false;
+        showToast(XXXINLINECODEXXX0XXXINLINECODEXXX);
+      });
+
+      stopRemindersBtn.addEventListener('click', stopReminders);
+
+      function stopReminders(){
+        if (remindersIntervalId) clearInterval(remindersIntervalId);
+        remindersIntervalId = null;
+        if (remindersEndTimeout) clearTimeout(remindersEndTimeout);
+        remindersEndTimeout = null;
+        remindersActive = false;
+        startRemindersBtn.disabled = false;
+        stopRemindersBtn.disabled = true;
+        showToast("Напоминания остановлены");
       }
     });
 
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      if (timerId) clearInterval(timerId);
-      timerId = null;
-      isRunning = false;
-      totalSeconds = 0;
-      document.getElementById('minutes').value = 0;
-      document.getElementById('seconds').value = 0;
-      updateDisplay(0);
-      document.getElementById('startBtn').disabled = false;
-      document.getElementById('pauseBtn').disabled = true;
-      document.getElementById('resetBtn').disabled = true;
-    });
-
-    // Напоминания: старт/остановка
+    // Общие утилиты
     function showToast(text){
       const el = document.createElement('div');
       el.className = 'toast';
@@ -412,25 +460,9 @@
       }, 3200);
     }
 
-    function ensureAudioRem(){
-      if(!audioCtx){
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      audioCtx.resume();
-    }
-
-    function triggerBeep(){
-      ensureAudioRem();
-      const t0 = audioCtx.currentTime;
-      // короткая последовательность нот
-      playTone(392.00, 0.12, t0);
-      playTone(493.88, 0.12, t0 + 0.15);
-      playTone(587.33, 0.18, t0 + 0.30);
-    }
-
     function triggerReminder(){
       const timeStr = new Date().toLocaleTimeString();
-      const msg = XXXINLINECODEXXX0XXXINLINECODEXXX;
+      const msg = XXXINLINECODEXXX1XXXINLINECODEXXX;
       if (window.Notification && Notification.permission === "granted") {
         new Notification("Напоминание", { body: msg });
       } else if (window.Notification && Notification.permission === "default") {
@@ -441,50 +473,20 @@
       } else {
         showToast(msg);
       }
+      // звук сигнала напоминания
       triggerBeep();
     }
 
-    // Быстрый запуск/остановка напоминаний
-    document.getElementById('startRemindersBtn').addEventListener('click', () => {
-      const interval = parseInt(document.getElementById('remInterval').value, 10);
-      const duration = parseInt(document.getElementById('remDuration').value, 10);
-      if (isNaN(interval) || interval <= 0 || isNaN(duration) || duration <= 0) return;
-
-      remIntervalMin = interval;
-      remDurationHours = duration;
-
-      // Запускаем напоминания
-      triggerReminder();
-      remindersIntervalId = setInterval(triggerReminder, interval * 60 * 1000);
-      remindersEndTimeout = setTimeout(() => {
-        stopReminders();
-      }, duration * 60 * 60 * 1000);
-
-      remindersActive = true;
-      document.getElementById('startRemindersBtn').disabled = true;
-      document.getElementById('stopRemindersBtn').disabled = false;
-      showToast(XXXINLINECODEXXX1XXXINLINECODEXXX);
-    });
-
-    document.getElementById('stopRemindersBtn').addEventListener('click', () => {
-      stopReminders();
-    });
-
-    function stopReminders(){
-      if (remindersIntervalId) clearInterval(remindersIntervalId);
-      remindersIntervalId = null;
-      if (remindersEndTimeout) clearTimeout(remindersEndTimeout);
-      remindersEndTimeout = null;
-      remindersActive = false;
-      document.getElementById('startRemindersBtn').disabled = false;
-      document.getElementById('stopRemindersBtn').disabled = true;
-      showToast("Напоминания остановлены");
+    function triggerBeep(){
+      ensureAudio();
+      const t0 = audioCtx.currentTime;
+      // короткая последовательность нот
+      playTone(392.00, 0.12, t0);
+      playTone(493.88, 0.12, t0 + 0.15);
+      playTone(587.33, 0.18, t0 + 0.30);
     }
 
-    // Инициализация дисплея
-    updateDisplay(0);
-
-    // Генерация фоновых фраз
+    // инициализация фона фраз
     function generateBackgroundPhrases() {
       const container = document.querySelector('.bg-phrases');
       container.innerHTML = '';
@@ -504,6 +506,7 @@
       }
     }
 
+    // Инициализация аудио и фраз после загрузки
     window.addEventListener('load', generateBackgroundPhrases);
   </script>
 </body>
