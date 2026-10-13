@@ -124,6 +124,43 @@
       font-size: 13px;
       opacity: .9;
     }
+
+    /* Напоминания секция */
+    .reminders {
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,.15);
+      text-align: left;
+    }
+    .reminders h4 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .reminders .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .reminders label { font-size: 14px; color: #fff; }
+    .reminders input { width: 90px; padding: 8px; font-size: 16px; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.85);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+    }
   </style>
 </head>
 <body>
@@ -151,92 +188,153 @@
       <button id="resetBtn" disabled aria-label="Сброс">Сброс</button>
     </div>
 
+    <div class="reminders" aria-label="Периодические напоминания">
+      <h4>Периодические напоминания</h4>
+      <div class="row" style="gap:8px;">
+        <label>Интервал, мин:
+          <input id="remInterval" type="number" min="1" value="15" />
+        </label>
+        <label>Длительность, ч:
+          <input id="remDuration" type="number" min="1" value="8" />
+        </label>
+        <button id="startRemindersBtn" aria-label="Запустить напоминания">Запуск</button>
+        <button id="stopRemindersBtn" aria-label="Остановить напоминания" disabled>Остановить</button>
+      </div>
+    </div>
+
     <div class="hint" style="text-align:center; color:#e7d3b0;">
-      Время отображается в формате MM:SS. По окончании звучит мелодия.
+      Время отображается в формате MM:SS. По окончании основного таймера звучит мелодия.
     </div>
   </div>
 
-<script>
-  let totalSeconds = 0;
-  let timerId = null;
-  let isRunning = false;
-  let audioCtx = null;
-  let melodyScheduled = false;
+  <script>
+    // Основной таймер
+    let totalSeconds = 0;
+    let timerId = null;
+    let isRunning = false;
+    let audioCtx = null;
+    let melodyScheduled = false;
 
-  function pad(n){ return String(n).padStart(2, '0'); }
+    // Напоминания
+    let remIntervalMin = 15;
+    let remDurationHours = 8;
+    let remindersIntervalId = null;
+    let remindersEndTimeout = null;
+    let remindersActive = false;
 
-  function updateDisplay(sec){
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    document.getElementById('display').textContent = pad(m) + ':' + pad(s);
-  }
+    function pad(n){ return String(n).padStart(2, '0'); }
 
-  function ensureAudio(){
-    if(!audioCtx){
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function updateDisplay(sec){
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      document.getElementById('display').textContent = pad(m) + ':' + pad(s);
     }
-    audioCtx.resume();
-  }
 
-  function playTone(freq, duration, when){
-    const ctx = audioCtx;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    gain.gain.value = 0.14;
-    osc.start(when);
-    gain.gain.setValueAtTime(0.0, when);
-    gain.gain.linearRampToValueAtTime(0.14, when + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    osc.stop(when + duration + 0.02);
-  }
+    function ensureAudio(){
+      if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      audioCtx.resume();
+    }
 
-  function playMelody(){
-    ensureAudio();
-    const melody = [
-      { freq: 261.63, dur: 0.25 },
-      { freq: 329.63, dur: 0.25 },
-      { freq: 392.00, dur: 0.25 },
-      { freq: 523.25, dur: 0.25 },
-      { freq: 587.33, dur: 0.25 },
-      { freq: 659.25, dur: 0.25 },
-      { freq: 698.46, dur: 0.25 },
-      { freq: 783.99, dur: 0.5 },
-      { freq: 523.25, dur: 0.25 },
-      { freq: 440.00, dur: 0.25 },
-      { freq: 392.00, dur: 0.25 },
-      { freq: 329.63, dur: 0.25 },
-      { freq: 261.63, dur: 0.5 }
-    ];
-    let t = audioCtx.currentTime;
-    melody.forEach(n => {
-      playTone(n.freq, n.dur, t);
-      t += n.dur;
+    function playTone(freq, duration, when){
+      const ctx = audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.value = 0.14;
+      osc.start(when);
+      gain.gain.setValueAtTime(0.0, when);
+      gain.gain.linearRampToValueAtTime(0.14, when + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+      osc.stop(when + duration + 0.02);
+    }
+
+    function playMelody(){
+      ensureAudio();
+      const melody = [
+        { freq: 261.63, dur: 0.25 },
+        { freq: 329.63, dur: 0.25 },
+        { freq: 392.00, dur: 0.25 },
+        { freq: 523.25, dur: 0.25 },
+        { freq: 587.33, dur: 0.25 },
+        { freq: 659.25, dur: 0.25 },
+        { freq: 698.46, dur: 0.25 },
+        { freq: 783.99, dur: 0.5 },
+        { freq: 523.25, dur: 0.25 },
+        { freq: 440.00, dur: 0.25 },
+        { freq: 392.00, dur: 0.25 },
+        { freq: 329.63, dur: 0.25 },
+        { freq: 261.63, dur: 0.5 }
+      ];
+      let t = audioCtx.currentTime;
+      melody.forEach(n => {
+        playTone(n.freq, n.dur, t);
+        t += n.dur;
+      });
+    }
+
+    function finishTimer(){
+      if (!melodyScheduled){
+        melodyScheduled = true;
+        playMelody();
+      } else {
+        melodyScheduled = false;
+      }
+    }
+
+    // Быстрый выбор времени
+    document.querySelectorAll('.quick-select button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mins = parseInt(btn.getAttribute('data-mins'), 10);
+        const total = mins * 60;
+        totalSeconds = total;
+        updateDisplay(totalSeconds);
+        document.getElementById('minutes').value = mins;
+        document.getElementById('seconds').value = 0;
+        // остановить текущий таймер
+        if (timerId){
+          clearInterval(timerId);
+          timerId = null;
+          isRunning = false;
+          document.getElementById('startBtn').disabled = false;
+          document.getElementById('pauseBtn').disabled = true;
+        }
+      });
     });
-  }
 
-  function finishTimer(){
-    if (!melodyScheduled){
-      melodyScheduled = true;
-      playMelody();
-    } else {
-      melodyScheduled = false;
-    }
-  }
-
-  // Быстрый выбор времени
-  document.querySelectorAll('.quick-select button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mins = parseInt(btn.getAttribute('data-mins'), 10);
-      const total = mins * 60;
-      totalSeconds = total;
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const minsFromInput = parseInt(document.getElementById('minutes').value, 10) || 0;
+      const secsFromInput = parseInt(document.getElementById('seconds').value, 10) || 0;
+      if (minsFromInput < 0 || secsFromInput < 0 || secsFromInput > 59) return;
+      totalSeconds = minsFromInput * 60 + secsFromInput;
       updateDisplay(totalSeconds);
-      document.getElementById('minutes').value = mins;
-      document.getElementById('seconds').value = 0;
-      // остановить текущий таймер
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(() => {
+        if (totalSeconds <= 0){
+          clearInterval(timerId);
+          timerId = null;
+          isRunning = false;
+          document.getElementById('startBtn').disabled = false;
+          document.getElementById('pauseBtn').disabled = true;
+          document.getElementById('resetBtn').disabled = false;
+          finishTimer();
+          return;
+        }
+        totalSeconds--;
+        updateDisplay(totalSeconds);
+      }, 1000);
+
+      isRunning = true;
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('pauseBtn').disabled = false;
+      document.getElementById('resetBtn').disabled = false;
+    });
+
+    document.getElementById('pauseBtn').addEventListener('click', () => {
       if (timerId){
         clearInterval(timerId);
         timerId = null;
@@ -245,61 +343,103 @@
         document.getElementById('pauseBtn').disabled = true;
       }
     });
-  });
 
-  document.getElementById('startBtn').addEventListener('click', () => {
-    const minsFromInput = parseInt(document.getElementById('minutes').value, 10) || 0;
-    const secsFromInput = parseInt(document.getElementById('seconds').value, 10) || 0;
-    if (minsFromInput < 0 || secsFromInput < 0 || secsFromInput > 59) return;
-    totalSeconds = minsFromInput * 60 + secsFromInput;
-    updateDisplay(totalSeconds);
-    if (timerId) clearInterval(timerId);
-    timerId = setInterval(() => {
-      if (totalSeconds <= 0){
-        clearInterval(timerId);
-        timerId = null;
-        isRunning = false;
-        document.getElementById('startBtn').disabled = false;
-        document.getElementById('pauseBtn').disabled = true;
-        document.getElementById('resetBtn').disabled = false;
-        finishTimer();
-        return;
-      }
-      totalSeconds--;
-      updateDisplay(totalSeconds);
-    }, 1000);
-
-    isRunning = true;
-    document.getElementById('startBtn').disabled = true;
-    document.getElementById('pauseBtn').disabled = false;
-    document.getElementById('resetBtn').disabled = false;
-  });
-
-  document.getElementById('pauseBtn').addEventListener('click', () => {
-    if (timerId){
-      clearInterval(timerId);
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (timerId) clearInterval(timerId);
       timerId = null;
       isRunning = false;
+      totalSeconds = 0;
+      document.getElementById('minutes').value = 0;
+      document.getElementById('seconds').value = 0;
+      updateDisplay(0);
       document.getElementById('startBtn').disabled = false;
       document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resetBtn').disabled = true;
+    });
+
+    // Напоминания: старт/остановка
+    function showToast(text){
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = text;
+      document.body.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 400);
+      }, 3200);
     }
-  });
 
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    if (timerId) clearInterval(timerId);
-    timerId = null;
-    isRunning = false;
-    totalSeconds = 0;
-    document.getElementById('minutes').value = 0;
-    document.getElementById('seconds').value = 0;
+    function ensureAudioRem(){
+      if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      audioCtx.resume();
+    }
+
+    function triggerBeep(){
+      ensureAudioRem();
+      const t0 = audioCtx.currentTime;
+      // короткая последовательность
+      playTone(392.00, 0.12, t0);
+      playTone(493.88, 0.12, t0 + 0.15);
+      playTone(587.33, 0.18, t0 + 0.30);
+    }
+
+    function triggerReminder(){
+      const timeStr = new Date().toLocaleTimeString();
+      const msg = XXXINLINECODEXXX0XXXINLINECODEXXX;
+      if (window.Notification && Notification.permission === "granted") {
+        new Notification("Напоминание", { body: msg });
+      } else if (window.Notification && Notification.permission === "default") {
+        Notification.requestPermission().then(p => {
+          if (p === "granted") new Notification("Напоминание", { body: msg });
+          else showToast(msg);
+        });
+      } else {
+        showToast(msg);
+      }
+      triggerBeep();
+    }
+
+    // Быстрый запуск/остановка напоминаний
+    document.getElementById('startRemindersBtn').addEventListener('click', () => {
+      const interval = parseInt(document.getElementById('remInterval').value, 10);
+      const duration = parseInt(document.getElementById('remDuration').value, 10);
+      if (isNaN(interval) || interval <= 0 || isNaN(duration) || duration <= 0) return;
+
+      remIntervalMin = interval;
+      remDurationHours = duration;
+
+      // Запускаем напоминания
+      triggerReminder();
+      remindersIntervalId = setInterval(triggerReminder, interval * 60 * 1000);
+      remindersEndTimeout = setTimeout(() => {
+        stopReminders();
+      }, duration * 60 * 60 * 1000);
+
+      remindersActive = true;
+      document.getElementById('startRemindersBtn').disabled = true;
+      document.getElementById('stopRemindersBtn').disabled = false;
+      showToast(XXXINLINECODEXXX1XXXINLINECODEXXX);
+    });
+
+    document.getElementById('stopRemindersBtn').addEventListener('click', () => {
+      stopReminders();
+    });
+
+    function stopReminders(){
+      if (remindersIntervalId) clearInterval(remindersIntervalId);
+      remindersIntervalId = null;
+      if (remindersEndTimeout) clearTimeout(remindersEndTimeout);
+      remindersEndTimeout = null;
+      remindersActive = false;
+      document.getElementById('startRemindersBtn').disabled = false;
+      document.getElementById('stopRemindersBtn').disabled = true;
+      showToast("Напоминания остановлены");
+    }
+
+    // Инициализация дисплея
     updateDisplay(0);
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('pauseBtn').disabled = true;
-    document.getElementById('resetBtn').disabled = true;
-  });
-
-  // Инициализация дисплея
-  updateDisplay(0);
-</script>
+  </script>
 </body>
 </html>
